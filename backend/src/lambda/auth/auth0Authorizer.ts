@@ -66,6 +66,10 @@ async function verifyToken(authHeader: string): Promise<JwtPayload> {
   });
   const signingKey = signingKeys[0].publicKey;
 
+  logger.info("Verify with", {
+    signingKey: signingKey,
+    token: token})
+
   return verify(token, signingKey, {algorithms: ['RS256']}) as JwtPayload;
 
 }

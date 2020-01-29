@@ -1,16 +1,16 @@
 import 'source-map-support/register'
 import { APIGatewayProxyEvent, APIGatewayProxyHandler, APIGatewayProxyResult } from 'aws-lambda'
-import { UpdateTodoRequest } from '../../requests/UpdateTodoRequest'
-import {TodoAccess} from "../../utils/TodoAccess";
+import { UpdateRekogRequest } from '../../requests/UpdateRekogRequest'
+import {RekogAccess} from "../../utils/RekogAccess";
 
-const todoAccess = new TodoAccess();
+const rekogAccess = new RekogAccess();
 
 export const handler: APIGatewayProxyHandler = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const todoId = event.pathParameters.todoId;
+  const rekogId = event.pathParameters.rekogId;
 
-  const updatedTodo: UpdateTodoRequest = JSON.parse(event.body);
+  const updatedRekog: UpdateRekogRequest = JSON.parse(event.body);
 
-  await todoAccess.updateTodo(todoId, updatedTodo);
+  await rekogAccess.updateRekog(rekogId, updatedRekog);
 
   return {
     statusCode: 202,

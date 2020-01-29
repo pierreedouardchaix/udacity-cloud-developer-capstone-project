@@ -1,33 +1,34 @@
 import * as React from 'react'
 import { Form, Button } from 'semantic-ui-react'
 import Auth from '../auth/Auth'
-import { getUploadUrl, uploadFile } from '../api/todos-api'
+import { getUploadUrl, uploadFile, detectText} from '../api/rekogs-api'
 
 enum UploadState {
   NoUpload,
   FetchingPresignedUrl,
   UploadingFile,
+  DetectingText
 }
 
-interface EditTodoProps {
+interface EditRekogProps {
   match: {
     params: {
-      todoId: string
+      rekogId: string
     }
   }
   auth: Auth
 }
 
-interface EditTodoState {
+interface EditRekogState {
   file: any
   uploadState: UploadState
 }
 
-export class EditTodo extends React.PureComponent<
-  EditTodoProps,
-  EditTodoState
+export class EditRekog extends React.PureComponent<
+  EditRekogProps,
+  EditRekogState
 > {
-  state: EditTodoState = {
+  state: EditRekogState = {
     file: undefined,
     uploadState: UploadState.NoUpload
   }
@@ -51,12 +52,15 @@ export class EditTodo extends React.PureComponent<
       }
 
       this.setUploadState(UploadState.FetchingPresignedUrl)
-      const uploadUrl = await getUploadUrl(this.props.auth.getIdToken(), this.props.match.params.todoId)
+      const uploadUrl = await getUploadUrl(this.props.auth.getIdToken(), this.props.match.params.rekogId)
 
       this.setUploadState(UploadState.UploadingFile)
       await uploadFile(uploadUrl, this.state.file)
 
-      alert('File was uploaded!')
+      this.setUploadState(UploadState.DetectingText)
+      await detectText(this.props.auth.getIdToken(), this.props.match.params.rekogId);
+
+      alert('File was uploaded and text was detected!')
     } catch (e) {
       alert('Could not upload a file: ' + e.message)
     } finally {
@@ -98,6 +102,7 @@ export class EditTodo extends React.PureComponent<
       <div>
         {this.state.uploadState === UploadState.FetchingPresignedUrl && <p>Uploading image metadata</p>}
         {this.state.uploadState === UploadState.UploadingFile && <p>Uploading file</p>}
+        {this.state.uploadState === UploadState.DetectingText && <p>Detecting text in image</p>}
         <Button
           loading={this.state.uploadState !== UploadState.NoUpload}
           type="submit"

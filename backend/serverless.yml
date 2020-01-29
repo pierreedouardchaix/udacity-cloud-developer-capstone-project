@@ -1,5 +1,5 @@
 service:
-  name: serverless-todo-app
+  name: serverless-rekog-app
 
 plugins:
   - serverless-webpack
@@ -7,15 +7,16 @@ plugins:
 
 provider:
   name: aws
-  runtime: nodejs8.10
+  runtime: nodejs12.x
 
   stage: ${opt:stage, 'dev'}
-  region: ${opt:region, 'eu-west-3'}
+  region: ${opt:region, 'eu-west-1'}
 
   environment:
-    TODOITEM_TABLE: Todoitem-pec-${self:provider.stage}
-    TODOITEM_TABLE_GSI: byUserIdGsi
-    TODOITEM_S3_BUCKET_NAME: todoitem-pec-attachments-${self:provider.stage}
+    REKOGS_TABLE: Rekogs-pec-${self:provider.stage}
+    REKOGS_TABLE_GSI_BY_USERID: byUserIdGsi
+    REKOGS_TABLE_GSI_BY_REKOGID: byRekogIdGsi
+    REKOGS_S3_BUCKET_NAME: rekogs-pec-attachments-${self:provider.stage}
     SIGNED_URL_EXPIRATION: 300
 
   tracing:
@@ -27,12 +28,12 @@ functions:
   Auth:
     handler: src/lambda/auth/auth0Authorizer.handler
 
-  GetTodos:
-    handler: src/lambda/http/getTodos.handler
+  GetRekogs:
+    handler: src/lambda/http/getRekogs.handler
     events:
       - http:
           method: get
-          path: todos
+          path: rekogs
           authorizer: Auth
           cors: true
     iamRoleStatements:
@@ -40,7 +41,12 @@ functions:
         Action:
           - dynamodb:Query
         Resource:
-          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOITEM_TABLE}/index/${self:provider.environment.TODOITEM_TABLE_GSI}
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}/index/${self:provider.environment.REKOGS_TABLE_GSI_BY_USERID}
+      - Effect: Allow
+        Action:
+          - dynamodb:Scan
+        Resource:
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}
       - Effect: Allow
         Action:
           - xray:GetSamplingRules
@@ -56,12 +62,12 @@ functions:
         Resource:
           - "*"
 
-  CreateTodo:
-    handler: src/lambda/http/createTodo.handler
+  CreateRekog:
+    handler: src/lambda/http/createRekog.handler
     events:
       - http:
           method: post
-          path: todos
+          path: rekogs
           authorizer: Auth
           cors: true
     iamRoleStatements:
@@ -69,7 +75,7 @@ functions:
         Action:
           - dynamodb:putItem
         Resource:
-          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOITEM_TABLE}
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}
       - Effect: Allow
         Action:
           - xray:GetSamplingRules
@@ -85,12 +91,12 @@ functions:
         Resource:
           - "*"
 
-  UpdateTodo:
-    handler: src/lambda/http/updateTodo.handler
+  UpdateRekog:
+    handler: src/lambda/http/updateRekog.handler
     events:
       - http:
           method: patch
-          path: todos/{todoId}
+          path: rekogs/{rekogId}
           authorizer: Auth
           cors: true
     iamRoleStatements:
@@ -98,7 +104,7 @@ functions:
         Action:
           - dynamodb:updateItem
         Resource:
-          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOITEM_TABLE}
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}
       - Effect: Allow
         Action:
           - xray:GetSamplingRules
@@ -114,12 +120,12 @@ functions:
         Resource:
           - "*"
 
-  DeleteTodo:
-    handler: src/lambda/http/deleteTodo.handler
+  DeleteRekog:
+    handler: src/lambda/http/deleteRekog.handler
     events:
       - http:
           method: delete
-          path: todos/{todoId}
+          path: rekogs/{rekogId}
           authorizer: Auth
           cors: true
     iamRoleStatements:
@@ -127,7 +133,49 @@ functions:
         Action:
           - dynamodb:deleteItem
         Resource:
-          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOITEM_TABLE}
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}
+      - Effect: Allow
+        Action:
+          - xray:GetSamplingRules
+          - xray:GetSamplingTargets
+          - xray:GetSamplingStatisticSummaries
+          - xray:BatchGetTraces
+          - xray:GetServiceGraph
+          - xray:GetTraceGraph
+          - xray:GetTraceSummaries
+          - xray:GetGroups
+          - xray:GetGroup
+          - xray:PutTraceSegments
+        Resource:
+          - "*"
+
+  DetectText:
+    handler: src/lambda/http/detectText.handler
+    events:
+      - http:
+          method: get
+          path: rekogs/{rekogId}/detect
+          authorizer: Auth
+          cors: true
+    iamRoleStatements:
+      - Effect: Allow
+        Action:
+          - rekognition:DetectText
+        Resource: '*'
+      - Effect: Allow
+        Action:
+          - s3:ReadObject
+        Resource: arn:aws:s3:::${self:provider.environment.REKOGS_S3_BUCKET_NAME}/*
+      - Effect: Allow
+        Action:
+          - dynamodb:Query
+        Resource:
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}/index/${self:provider.environment.REKOGS_TABLE_GSI_BY_REKOGID}
+      - Effect: Allow
+        Action:
+          - dynamodb:updateItem
+        Resource:
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}
       - Effect: Allow
         Action:
           - xray:GetSamplingRules
@@ -148,19 +196,19 @@ functions:
     events:
       - http:
           method: post
-          path: todos/{todoId}/attachment
+          path: rekogs/{rekogId}/attachment
           authorizer: Auth
           cors: true
     iamRoleStatements:
       - Effect: Allow
         Action:
           - s3:PutObject
-        Resource: arn:aws:s3:::${self:provider.environment.TODOITEM_S3_BUCKET_NAME}/*
+        Resource: arn:aws:s3:::${self:provider.environment.REKOGS_S3_BUCKET_NAME}/*
       - Effect: Allow
         Action:
           - dynamodb:updateItem
         Resource:
-          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.TODOITEM_TABLE}
+          - arn:aws:dynamodb:${self:provider.region}:*:table/${self:provider.environment.REKOGS_TABLE}
       - Effect: Allow
         Action:
           - xray:GetSamplingRules
@@ -193,7 +241,7 @@ resources:
     AttachmentsBucket:
       Type: AWS::S3::Bucket
       Properties:
-        BucketName: ${self:provider.environment.TODOITEM_S3_BUCKET_NAME}
+        BucketName: ${self:provider.environment.REKOGS_S3_BUCKET_NAME}
         CorsConfiguration:
           CorsRules:
             - AllowedOrigins:
@@ -219,26 +267,32 @@ resources:
               Effect: Allow
               Principal: '*'
               Action: 's3:GetObject'
-              Resource: 'arn:aws:s3:::${self:provider.environment.TODOITEM_S3_BUCKET_NAME}/*'
+              Resource: 'arn:aws:s3:::${self:provider.environment.REKOGS_S3_BUCKET_NAME}/*'
         Bucket: !Ref AttachmentsBucket
 
-    TodoItemTable:
+    RekogsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:provider.environment.TODOITEM_TABLE}
+        TableName: ${self:provider.environment.REKOGS_TABLE}
         AttributeDefinitions:
-          - AttributeName: todoId
+          - AttributeName: rekogId
             AttributeType: S
           - AttributeName: userId
             AttributeType: S
         KeySchema:
-          - AttributeName: todoId
+          - AttributeName: rekogId
             KeyType: HASH
         BillingMode: PAY_PER_REQUEST
         GlobalSecondaryIndexes:
-          - IndexName: ${self:provider.environment.TODOITEM_TABLE_GSI}
+          - IndexName: ${self:provider.environment.REKOGS_TABLE_GSI_BY_USERID}
             KeySchema:
               - AttributeName: userId
+                KeyType: HASH
+            Projection:
+              ProjectionType: ALL
+          - IndexName: ${self:provider.environment.REKOGS_TABLE_GSI_BY_REKOGID}
+            KeySchema:
+              - AttributeName: rekogId
                 KeyType: HASH
             Projection:
               ProjectionType: ALL
