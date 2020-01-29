@@ -220,7 +220,7 @@ export class Rekogs extends React.PureComponent<RekogsProps, RekogsState> {
                     return (
                       <Grid padded>
                         <Grid.Row>
-                          <Grid.Column width={4} verticalAlign="middle" textAlign="left">
+                          <Grid.Column width={1} verticalAlign="middle" textAlign="left">
                             <Checkbox
                               onChange={async () => await this.onRekogCheck(pos, i)}
                               checked={rekog.userValidated[i]}

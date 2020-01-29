@@ -52,3 +52,18 @@ Navigate to the `client` directory and run:
 npm run start
 ```
 Then go to `http://localhost:3000`.
+
+## Using the application
+
+1. Log in / Sign up to the application.
+
+1. Create a new Rekog item using the component on the upper part of the website.
+The new item appears in the list below.
+
+1. Click the "Edit" button for the newly added item. Choose a picture from your local drive and click and upload.
+
+1. Once the upload is finished, click "Home" to go back to the home page.
+
+1. The detected texts are now displayed on the bottom part of the Rekog item.
+
+1. Use the checkboxs to indicate whether the detected texts are correct or not.
